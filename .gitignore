@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
+!.env.example
+
+# Local Data / Docker Volumes
+/pgdata/
+/minio_data/
+/redis_data/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Docker & Deployment
+.docker/
+.fly/
+.turbo/
+
+# Vite / Vitest
+vitest.config.ts.timestamp-*
+
+# Misc
+*.pem
+.cache/
