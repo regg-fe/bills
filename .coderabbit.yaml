@@ -1,0 +1,25 @@
+# .coderabbit.yaml
+language: "es-ES"
+
+reviews:
+  profile: "assertive"
+  auto_review:
+    enabled: true
+    drafts: false
+
+summaries:
+  enabled: true
+  custom_instructions: |
+    Sigue estrictamente la siguiente estructura en español para la descripción y resumen de la Pull Request:
+
+    ## 🎯 Descripción
+    (Proporciona un resumen claro y conciso del propósito de este PR)
+
+    ## 🛠️ Cambios realizados
+    (Enumera en viñetas los cambios principales realizados en el código)
+
+    ## 🧪 Verificación / Pruebas
+    (Indica qué partes del código fueron probadas o cómo verificar que funciona)
+
+    ## 📌 Impacto y Consideraciones
+    (Menciona si hay cambios en dependencias, variables de entorno o archivos de configuración)
