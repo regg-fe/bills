@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: bills-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    autoDeploy: false
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - fromGroup: bills-secrets
+
+  - type: worker
+    name: bills-worker
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    startCommand: pnpm start:worker
+    envVars:
+      - fromGroup: bills-secrets
+
+databases:
+  - name: bills-db
+    plan: starter
+
+redis:
+  - name: bills-redis
+    plan: starter
