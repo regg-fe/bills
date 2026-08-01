@@ -54,3 +54,6 @@ vitest.config.ts.timestamp-*
 # Misc
 *.pem
 .cache/
+
+# Docs
+PLAN_MVP_CORE_BILLS.md
