@@ -35,6 +35,8 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
+    "@sentry/node": "^10.69.0",
+    "fastify": "^5.11.0",
     "zod": "^4.4.3"
   }
 }

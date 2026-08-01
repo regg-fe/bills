@@ -29,6 +29,12 @@ const envSchema = z.object({
   SMTP_HOST: z.string().min(1, 'SMTP_HOST es obligatoria').default('localhost'),
   SMTP_PORT: z.coerce.number().int().positive().default(1025),
 
+  // Observabilidad
+  SENTRY_DSN: z.string().optional(),
+  LOG_LEVEL: z
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+    .default('info'),
+
   // Opcional MVP
   VAULT_ADDR: z.string().optional(),
 });
