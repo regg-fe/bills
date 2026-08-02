@@ -1,0 +1,99 @@
+name: Auto PR Description
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: auto-pr-description-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  autofill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Auto-fill PR description
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # 1. Extraer issue del branch: feat/6-0.5-slug -> 6
+          ISSUE_NUM="$(echo "$HEAD_REF" | sed -E 's#^[^/]+/##' | grep -oE '^[0-9]+-' | tr -d '-' || true)"
+
+          # 2. Commits en formato conventional commits (fallback: todos los commits)
+          COMMITS="$(git log --format='%s' "$BASE_SHA..$HEAD_SHA" | grep -E '^(feat|fix|docs|style|refactor|test|chore)(\([^)]*\))?:' || true)"
+          if [ -z "$COMMITS" ]; then
+            COMMITS="$(git log --format='%s' "$BASE_SHA..$HEAD_SHA" || true)"
+          fi
+
+          # 3. Archivos modificados
+          FILES="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | sort -u || true)"
+
+          # 4. Body actual del PR; si está vacío, usamos el template del repo
+          BODY="$(gh pr view "$PR_NUMBER" --json body -q .body 2>/dev/null || true)"
+          if [ -z "$BODY" ]; then
+            BODY="$(gh api "repos/${{ github.repository }}/contents/.github/pull_request_template.md" --jq '.content' 2>/dev/null | base64 -d || true)"
+          fi
+          if [ -z "$BODY" ]; then
+            echo "No se pudo obtener un body base; abortando."
+            exit 0
+          fi
+
+          # 5. Si el body no tiene marcadores AUTO_*, no reescribimos el PR
+          if ! printf '%s\n' "$BODY" | grep -q '<!-- AUTO_'; then
+            echo "El body no contiene marcadores AUTO_*; no se modifica el PR."
+            exit 0
+          fi
+          printf '%s\n' "$BODY" > /tmp/pr_body.tpl
+
+          # 6. Construir secciones
+          ISSUE_SECTION=""
+          if [ -n "$ISSUE_NUM" ]; then
+            ISSUE_SECTION="Closes #$ISSUE_NUM"
+          fi
+
+          SUMMARY_SECTION=""
+          if [ -n "$COMMITS" ]; then
+            SUMMARY_SECTION="$(printf '%s\n' "$COMMITS" | sed 's/^/- /')"
+          fi
+
+          FILES_SECTION=""
+          if [ -n "$FILES" ]; then
+            FILES_SECTION="$(printf '%s\n' "$FILES" | sed 's/^/- \`&/; s/$/\`/')"
+          fi
+
+          export ISSUE_SECTION SUMMARY_SECTION FILES_SECTION
+
+          # 7. Reemplazar SOLO los marcadores AUTO_* (el resto del body se conserva)
+          node -e '
+            const fs = require("fs");
+            let body = fs.readFileSync("/tmp/pr_body.tpl", "utf8");
+            const subs = {
+              "<!-- AUTO_ISSUE -->": process.env.ISSUE_SECTION,
+              "<!-- AUTO_SUMMARY -->": process.env.SUMMARY_SECTION,
+              "<!-- AUTO_FILES -->": process.env.FILES_SECTION,
+            };
+            for (const [k, v] of Object.entries(subs)) {
+              body = body.split(k).join(v);
+            }
+            fs.writeFileSync("/tmp/pr_body.final", body);
+          '
+
+          # 8. Actualizar el PR
+          gh pr edit "$PR_NUMBER" --body-file /tmp/pr_body.final
+          echo "PR #$PR_NUMBER actualizado (issue: ${ISSUE_SECTION:-ninguna})"
