@@ -38,6 +38,20 @@ CREATE TYPE public.user_role AS ENUM (
 );
 
 
+--
+-- Name: set_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_updated_at() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -113,7 +127,7 @@ CREATE TABLE public.memberships (
 CREATE TABLE public.organizations (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     name text NOT NULL,
-    base_currency_id character(3) NOT NULL,
+    base_currency_code character(3) NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT organizations_name_check CHECK (((length(TRIM(BOTH FROM name)) >= 1) AND (length(TRIM(BOTH FROM name)) <= 255)))
@@ -256,7 +270,21 @@ CREATE INDEX memberships_user_id_idx ON public.memberships USING btree (user_id)
 -- Name: users_email_lower_uidx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX users_email_lower_uidx ON public.users USING btree (lower(email));
+CREATE UNIQUE INDEX users_email_lower_uidx ON public.users USING btree (lower(email)) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: organizations organizations_set_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER organizations_set_updated_at BEFORE UPDATE ON public.organizations FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+
+--
+-- Name: users users_set_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER users_set_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 
 --
@@ -265,6 +293,14 @@ CREATE UNIQUE INDEX users_email_lower_uidx ON public.users USING btree (lower(em
 
 ALTER TABLE ONLY public.exchange_rates
     ADD CONSTRAINT exchange_rates_base_fkey FOREIGN KEY (base) REFERENCES public.currencies(code);
+
+
+--
+-- Name: exchange_rates exchange_rates_org_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exchange_rates
+    ADD CONSTRAINT exchange_rates_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
 
 
 --
@@ -304,8 +340,14 @@ ALTER TABLE ONLY public.memberships
 --
 
 ALTER TABLE ONLY public.organizations
-    ADD CONSTRAINT organizations_base_currency_id_fkey FOREIGN KEY (base_currency_id) REFERENCES public.currencies(code);
+    ADD CONSTRAINT organizations_base_currency_id_fkey FOREIGN KEY (base_currency_code) REFERENCES public.currencies(code);
 
+
+--
+-- Name: exchange_rates; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.exchange_rates ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: invitations; Type: ROW SECURITY; Schema: public; Owner: -
@@ -344,4 +386,5 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('20260803204851'),
-    ('20260803204915');
+    ('20260803204915'),
+    ('20260803222624');

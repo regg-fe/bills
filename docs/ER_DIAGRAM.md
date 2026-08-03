@@ -153,7 +153,7 @@ erDiagram
     organizations {
         uuid id PK
         string name
-        string base_currency_id FK "CHAR(3) → currencies.code"
+        string base_currency_code FK "CHAR(3) → currencies.code"
         timestamp created_at
         timestamp updated_at
     }

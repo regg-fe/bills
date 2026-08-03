@@ -98,7 +98,7 @@ services:
   #    Importante: apunta a postgres DIRECTO (:5432), no a PgBouncer (:6432) —
   #    las TX de DDL no pasan por el pooler tx-mode.
   dbmate:
-    image: ghcr.io/amacneil/dbmate:latest
+    image: ghcr.io/amacneil/dbmate:2.34.1   # pin: reproducibilidad (obs CodeRabbit #1)
     container_name: bills-dbmate
     profiles: ["tools"]           # no arranca con `docker compose up` normal
     volumes:
