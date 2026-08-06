@@ -3,7 +3,7 @@ import { z } from 'zod';
 const envSchema = z.object({
   // Runtime
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.coerce.number().int().positive().default(3000),
+  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
 
   // Database & Cache
   DATABASE_URL: z.string().min(1, 'DATABASE_URL es obligatoria'),
@@ -27,10 +27,11 @@ const envSchema = z.object({
   // Email (opcional en dev — Mailpit)
   RESEND_API_KEY: z.string().optional(),
   SMTP_HOST: z.string().min(1, 'SMTP_HOST es obligatoria').default('localhost'),
-  SMTP_PORT: z.coerce.number().int().positive().default(1025),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
 
   // Observabilidad
-  SENTRY_DSN: z.string().optional(),
+  // Patrón de S3_ENDPOINT; '' se tolera porque initSentry la trata como no-op
+  SENTRY_DSN: z.union([z.literal(''), z.string().url('SENTRY_DSN debe ser una URL válida')]).optional(),
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
