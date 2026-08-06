@@ -11,7 +11,11 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:migrate": "docker compose --profile tools run --rm dbmate up",
+    "db:rollback": "docker compose --profile tools run --rm dbmate rollback",
+    "db:status": "docker compose --profile tools run --rm dbmate status",
+    "db:new": "docker compose --profile tools run --rm --no-deps dbmate new"
   },
   "keywords": [],
   "author": "",

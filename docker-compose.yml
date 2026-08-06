@@ -94,6 +94,21 @@ services:
     volumes:
       - mailpit_data:/data
 
+  # 7. Migraciones (dbmate): se usa bajo demanda, nunca "up" automático.
+  #    Importante: apunta a postgres DIRECTO (:5432), no a PgBouncer (:6432) —
+  #    las TX de DDL no pasan por el pooler tx-mode.
+  dbmate:
+    image: ghcr.io/amacneil/dbmate:2.34.1   # pin: reproducibilidad (obs CodeRabbit #1)
+    container_name: bills-dbmate
+    profiles: ["tools"]           # no arranca con `docker compose up` normal
+    volumes:
+      - ./sql:/db                 # las migraciones viven en sql/migrations
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-bills_db}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # 6. OCR Sidecar (Servicio pesado en Python/FastAPI - Descomentar al implementar Fase 2)
   # ocr-sidecar:
   #   build:

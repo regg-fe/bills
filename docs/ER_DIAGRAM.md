@@ -153,7 +153,7 @@ erDiagram
     organizations {
         uuid id PK
         string name
-        uuid base_currency_id FK
+        string base_currency_code FK "CHAR(3) → currencies.code"
         timestamp created_at
         timestamp updated_at
     }
@@ -283,8 +283,8 @@ erDiagram
     exchange_rates {
         uuid id PK
         uuid org_id FK "nullable = global"
-        uuid base_currency_id FK
-        uuid quote_currency_id FK
+        string base FK "CHAR(3) → currencies.code"
+        string quote FK "CHAR(3) → currencies.code"
         numeric rate
         date rate_date
         string source "api | manual | override"
