@@ -15,8 +15,11 @@ try {
   // reportado a Sentry si hay DSN, y salida con código no-cero.
   app.log.error(err);
   if (env.SENTRY_DSN) {
-    const { captureException } = await import('@sentry/node');
+    const { captureException, flush } = await import('@sentry/node');
     captureException(err);
+    // captureException solo encola el evento: flush(timeout) espera el envío
+    // antes de que process.exit(1) termine el proceso (obs CodeRabbit).
+    await flush(2000);
   }
   process.exit(1);
 }
