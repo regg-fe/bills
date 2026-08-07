@@ -4,15 +4,13 @@
 <!-- feat | fix | docs | style | refactor | test | chore -->
 
 ## Issue
-<!-- AUTO_ISSUE -->
+<!-- AUTO_ISSUE_START -->
+<!-- AUTO_ISSUE_END -->
 
 ## Resumen de cambios
-<!-- AUTO_SUMMARY -->
+<!-- AUTO_SUMMARY_START -->
+<!-- AUTO_SUMMARY_END -->
 
 ## Archivos afectados
-<!-- AUTO_FILES -->
-
-## Verificación
-- [ ] `pnpm typecheck && pnpm lint && pnpm test` pasan localmente
-- [ ] Tests nuevos o actualizados
-- [ ] Documentación actualizada si aplica
+<!-- AUTO_FILES_START -->
+<!-- AUTO_FILES_END -->

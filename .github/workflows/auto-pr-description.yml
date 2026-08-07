@@ -17,7 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # SHA completa del tag v4 (backport 2026-07-16): referencia inmutable
+        # (obs CodeRabbit #7). No usar @v4: tag mutable con permisos de escritura.
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
 
@@ -32,8 +34,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          # 1. Extraer issue del branch: feat/6-0.5-slug -> 6
-          ISSUE_NUM="$(echo "$HEAD_REF" | sed -E 's#^[^/]+/##' | grep -oE '^[0-9]+-' | tr -d '-' || true)"
+          # 1. Extraer issue del branch: SOLO feat/<issue#>-<slug> (obs #8)
+          ISSUE_NUM="$(echo "$HEAD_REF" | sed -nE 's#^feat/([0-9]+)-.*#\1#p' || true)"
 
           # 2. Commits en formato conventional commits (fallback: todos los commits)
           COMMITS="$(git log --format='%s' "$BASE_SHA..$HEAD_SHA" | grep -E '^(feat|fix|docs|style|refactor|test|chore)(\([^)]*\))?:' || true)"
@@ -41,8 +43,8 @@ jobs:
             COMMITS="$(git log --format='%s' "$BASE_SHA..$HEAD_SHA" || true)"
           fi
 
-          # 3. Archivos modificados
-          FILES="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | sort -u || true)"
+          # 3. Archivos modificados (tres puntos: solo cambios del PR, obs #9)
+          FILES="$(git diff --name-only "$BASE_SHA"... | sort -u || true)"
 
           # 4. Body actual del PR; si está vacío, usamos el template del repo
           BODY="$(gh pr view "$PR_NUMBER" --json body -q .body 2>/dev/null || true)"
@@ -54,9 +56,9 @@ jobs:
             exit 0
           fi
 
-          # 5. Si el body no tiene marcadores AUTO_*, no reescribimos el PR
-          if ! printf '%s\n' "$BODY" | grep -q '<!-- AUTO_'; then
-            echo "El body no contiene marcadores AUTO_*; no se modifica el PR."
+          # 5. Si el body no tiene delimitadores AUTO_*_START/END, no reescribimos
+          if ! printf '%s\n' "$BODY" | grep -q '<!-- AUTO_.*_START -->'; then
+            echo "El body no contiene delimitadores AUTO_*; no se modifica el PR."
             exit 0
           fi
           printf '%s\n' "$BODY" > /tmp/pr_body.tpl
@@ -79,17 +81,19 @@ jobs:
 
           export ISSUE_SECTION SUMMARY_SECTION FILES_SECTION
 
-          # 7. Reemplazar SOLO los marcadores AUTO_* (el resto del body se conserva)
+          # 7. Reemplazar SOLO el contenido ENTRE delimitadores AUTO_*_START/END,
+          #    conservando los delimitadores para re-ejecuciones (obs #10)
           node -e '
             const fs = require("fs");
             let body = fs.readFileSync("/tmp/pr_body.tpl", "utf8");
             const subs = {
-              "<!-- AUTO_ISSUE -->": process.env.ISSUE_SECTION,
-              "<!-- AUTO_SUMMARY -->": process.env.SUMMARY_SECTION,
-              "<!-- AUTO_FILES -->": process.env.FILES_SECTION,
+              "AUTO_ISSUE": process.env.ISSUE_SECTION,
+              "AUTO_SUMMARY": process.env.SUMMARY_SECTION,
+              "AUTO_FILES": process.env.FILES_SECTION,
             };
-            for (const [k, v] of Object.entries(subs)) {
-              body = body.split(k).join(v);
+            for (const [name, value] of Object.entries(subs)) {
+              const re = new RegExp("<!-- " + name + "_START -->[\\s\\S]*?<!-- " + name + "_END -->");
+              body = body.replace(re, () => "<!-- " + name + "_START -->\n" + value + "\n<!-- " + name + "_END -->");
             }
             fs.writeFileSync("/tmp/pr_body.final", body);
           '
