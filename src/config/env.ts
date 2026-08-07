@@ -1,9 +1,36 @@
 import { z } from 'zod';
 
-const envSchema = z.object({
+// Regex del parser de DSN de Sentry (replica de @sentry/core 10.69.0,
+// utils/dsn.ts). makeDsn/dsnFromString no se exportan públicamente, por eso se
+// replica aquí el criterio exacto: protocolo + clave pública + host + path.
+const SENTRY_DSN_REGEX = /^(?:(\w+):)\/\/(?:(\w+)(?::(\w+)?)?@)((?:\[[:.%\w]+\]|[\w.-]+))(?::(\d+))?\/(.+)/;
+
+/**
+ * Mismo criterio que makeDsn de @sentry/core 10.69.0: protocolo http/https +
+ * clave pública + host + projectId (segmento final del path con dígitos).
+ * z.url() por sí solo acepta https://example.com, que Sentry descarta en
+ * silencio y nunca envía las capturas.
+ */
+function isSentryDsn(value: string): boolean {
+  const match = SENTRY_DSN_REGEX.exec(value);
+  if (!match) {
+    return false;
+  }
+  const protocol = match[1] ?? '';
+  const publicKey = match[2] ?? '';
+  const host = match[4] ?? '';
+  const lastPath = match[6] ?? '';
+  if ((protocol !== 'http' && protocol !== 'https') || !publicKey || !host) {
+    return false;
+  }
+  const projectId = lastPath.split('/').pop() ?? '';
+  return projectId.match(/^\d+/) !== null;
+}
+
+export const envSchema = z.object({
   // Runtime
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.coerce.number().int().positive().default(3000),
+  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
 
   // Database & Cache
   DATABASE_URL: z.string().min(1, 'DATABASE_URL es obligatoria'),
@@ -27,10 +54,20 @@ const envSchema = z.object({
   // Email (opcional en dev — Mailpit)
   RESEND_API_KEY: z.string().optional(),
   SMTP_HOST: z.string().min(1, 'SMTP_HOST es obligatoria').default('localhost'),
-  SMTP_PORT: z.coerce.number().int().positive().default(1025),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
 
   // Observabilidad
-  SENTRY_DSN: z.string().optional(),
+  // Patrón de S3_ENDPOINT; '' se tolera porque initSentry la trata como no-op
+  SENTRY_DSN: z
+    .union([
+      z.literal(''),
+      z
+        .url({ error: 'SENTRY_DSN debe ser una URL válida' })
+        .refine(isSentryDsn, {
+          error: 'SENTRY_DSN debe ser un DSN de Sentry (protocolo + clave pública + host + projectId)',
+        }),
+    ])
+    .optional(),
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
