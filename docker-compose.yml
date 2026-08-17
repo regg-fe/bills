@@ -104,7 +104,11 @@ services:
     volumes:
       - ./sql:/db                 # las migraciones viven en sql/migrations
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-bills_db}?sslmode=disable
+      # La URL incrusta credenciales: si el password tiene caracteres reservados
+      # (@ : / ? # %) hay que percent-encodearlos o la conexión se rompe con
+      # errores confusos. Genera la URL segura con `pnpm db:url` y pásala como
+      # DBMATE_DATABASE_URL para sobreescribir este default de desarrollo.
+      DATABASE_URL: ${DBMATE_DATABASE_URL:-postgres://postgres:postgres@postgres:5432/bills_db?sslmode=disable}
     depends_on:
       postgres:
         condition: service_healthy
